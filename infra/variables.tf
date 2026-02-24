@@ -11,6 +11,14 @@ variable "region" {
     error_message = "Region must not be empty."
   }
 }
+variable "terraform_role_arn" {
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.terraform_role_arn != ""
+    error_message = "Role ARN must not be empty."
+  }
+}
 
 ################################################################################
 # EC2 configuration

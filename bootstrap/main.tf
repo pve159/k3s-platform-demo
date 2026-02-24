@@ -1,15 +1,31 @@
 #################################################
+# Account info
+#################################################
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  bucket_name = "${var.project_name}-tfstate"
+
+  common_tags = {
+    Project = var.project_name
+    Managed = "terraform-bootstrap"
+  }
+}
+
+#################################################
 # S3 Bucket for Terraform state
 #################################################
 
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "${var.project_name}-tfstate"
+  bucket = local.bucket_name
 
-  tags = {
-    Name    = "${var.project_name}-tfstate"
-    Project = var.project_name
-    Managed = "terraform-bootstrap"
+  lifecycle {
+    prevent_destroy = true
   }
+  tags = merge(local.common_tags, {
+    Name = local.bucket_name
+  })
 }
 
 #################################################
@@ -18,19 +34,17 @@ resource "aws_s3_bucket" "tf_state" {
 
 resource "aws_s3_bucket_versioning" "tf_state_versioning" {
   bucket = aws_s3_bucket.tf_state.id
-
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 #################################################
-# Enable Server-side encryption
+# Enable Encryption (SSE-S3 AES256)
 #################################################
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "tf_state_encryption" {
   bucket = aws_s3_bucket.tf_state.id
-
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -39,12 +53,28 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tf_state_encrypti
 }
 
 #################################################
-# Block public access
+# Lifecycle rule (cleanup old versions)
+#################################################
+
+resource "aws_s3_bucket_lifecycle_configuration" "tf_state" {
+  bucket = aws_s3_bucket.tf_state.id
+
+  rule {
+    id     = "cleanup-old-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+#################################################
+# Block Public Access
 #################################################
 
 resource "aws_s3_bucket_public_access_block" "tf_state_block" {
-  bucket = aws_s3_bucket.tf_state.id
-
+  bucket                  = aws_s3_bucket.tf_state.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -52,22 +82,79 @@ resource "aws_s3_bucket_public_access_block" "tf_state_block" {
 }
 
 #################################################
-# DynamoDB table for state locking
+# Terraform execution role
 #################################################
 
-resource "aws_dynamodb_table" "tf_locks" {
-  name         = "${var.project_name}-tf-locks"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
+resource "aws_iam_role" "terraform_execution_role" {
+  name = "terraform-execution-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+  tags = local.common_tags
+}
 
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
+#################################################
+# Attach AdministratorAccess (simple & clean)
+#################################################
 
-  tags = {
-    Name    = "${var.project_name}-tf-locks"
-    Project = var.project_name
-    Managed = "terraform-bootstrap"
-  }
+resource "aws_iam_role_policy_attachment" "terraform_admin" {
+  role       = aws_iam_role.terraform_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+#################################################
+# Restrict bucket access to Terraform role
+#################################################
+
+resource "aws_s3_bucket_policy" "tf_state_policy" {
+  bucket = aws_s3_bucket.tf_state.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "AllowTerraformRoleObjectAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.terraform_execution_role.arn
+        }
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.tf_state.arn}/*"
+      },
+      {
+        Sid = "AllowTerraformRoleListBucket"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.terraform_execution_role.arn
+        }
+        Action = "s3:ListBucket"
+        Resource = aws_s3_bucket.tf_state.arn
+      },
+      {
+        Sid = "DenyInsecureTransport"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.tf_state.arn,
+          "${aws_s3_bucket.tf_state.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
 }
