@@ -231,22 +231,6 @@ resource "aws_security_group" "demo-k3s-sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.demo-bastion-sg.id]
   }
-  /*
-  ingress {
-    description = "Allow Kubelet API"
-    from_port   = 10250
-    to_port     = 10250
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-  ingress {
-    description = "Allow Flannel VXLAN backend"
-    from_port   = 8472
-    to_port     = 8472
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-  */
   ingress {
     description = "Allow internal cluster traffic"
     from_port   = 0
@@ -341,7 +325,6 @@ resource "aws_instance" "demo-k3s-worker_b" {
 
 resource "aws_iam_role" "demo-bastion-role" {
   name = "demo-bastion-role"
-
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

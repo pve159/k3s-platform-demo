@@ -12,8 +12,8 @@ variable "region" {
   }
 }
 variable "terraform_role_arn" {
-  type        = string
-  default     = ""
+  type    = string
+  default = ""
   validation {
     condition     = var.terraform_role_arn != ""
     error_message = "Role ARN must not be empty."

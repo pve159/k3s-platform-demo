@@ -6,7 +6,6 @@ data "aws_caller_identity" "current" {}
 
 locals {
   bucket_name = "${var.project_name}-tfstate"
-
   common_tags = {
     Project = var.project_name
     Managed = "terraform-bootstrap"
@@ -19,7 +18,6 @@ locals {
 
 resource "aws_s3_bucket" "tf_state" {
   bucket = local.bucket_name
-
   lifecycle {
     prevent_destroy = true
   }
@@ -58,7 +56,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tf_state_encrypti
 
 resource "aws_s3_bucket_lifecycle_configuration" "tf_state" {
   bucket = aws_s3_bucket.tf_state.id
-
   rule {
     id     = "cleanup-old-versions"
     status = "Enabled"
@@ -101,12 +98,65 @@ resource "aws_iam_role" "terraform_execution_role" {
 }
 
 #################################################
-# Attach AdministratorAccess (simple & clean)
+# Add custom Terraform policy
 #################################################
 
-resource "aws_iam_role_policy_attachment" "terraform_admin" {
+resource "aws_iam_policy" "terraform_infra_policy" {
+  name = "terraform-infra-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # =========================
+      # EC2 & Networking
+      # =========================
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:*"
+        ]
+        Resource = "*"
+      },
+      # =========================
+      # IAM (minimal)
+      # =========================
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+          "iam:GetRole",
+          "iam:CreateRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:DeleteRole"
+        ]
+        Resource = "*"
+      },
+      # =========================
+      # S3 backend state
+      # =========================
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = "arn:aws:s3:::k3s-platform-demo-tfstate"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::k3s-platform-demo-tfstate/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_policy" {
   role       = aws_iam_role.terraform_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+  policy_arn = aws_iam_policy.terraform_infra_policy.arn
 }
 
 #################################################
