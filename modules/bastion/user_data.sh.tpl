@@ -51,7 +51,7 @@ defaults
 ########################################################
 
 frontend k8s_api
-    bind *:6443
+    bind 127.0.0.1:6443
     mode tcp
     default_backend k8s_masters
 

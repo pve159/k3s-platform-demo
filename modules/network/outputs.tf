@@ -22,3 +22,11 @@ output "internet_gateway_id" {
   description = "Internet Gateway ID"
   value       = aws_internet_gateway.this.id
 }
+
+output "bastion_security_group_id" {
+  value = aws_security_group.bastion.id
+}
+
+output "cluster_security_group_id" {
+  value = aws_security_group.cluster.id
+}

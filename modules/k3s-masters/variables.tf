@@ -1,50 +1,85 @@
+############################################################
+# Project & Environment
+############################################################
+
 variable "project" {
-  type = string
+  description = "Project name used for resource naming and tagging"
+  type        = string
 }
 
 variable "environment" {
-  type = string
+  description = "Deployment environment name (e.g. dev, staging, prod)"
+  type        = string
 }
 
 variable "common_tags" {
-  type = map(string)
+  description = "Common tags applied to all resources"
+  type        = map(string)
 }
 
+############################################################
+# Networking
+############################################################
+
 variable "vpc_id" {
-  type = string
+  description = "VPC ID where master nodes are deployed"
+  type        = string
 }
 
 variable "private_subnet_ids" {
-  type = list(string)
+  description = "List of private subnet IDs used to distribute master nodes"
+  type        = list(string)
 }
 
+variable "cluster_security_group_id" {
+  description = "Security group ID attached to master nodes"
+  type        = string
+}
+
+############################################################
+# Compute Configuration
+############################################################
+
 variable "instance_type" {
-  type = string
+  description = "EC2 instance type for master nodes"
+  type        = string
 }
 
 variable "key_name" {
-  type = string
-}
-
-variable "master_count" {
-  type = number
-}
-
-variable "cluster_token" {
-  type      = string
-  sensitive = true
+  description = "SSH key pair name used to access master instances"
+  type        = string
 }
 
 variable "ami_name_pattern" {
-  type = string
+  description = "AMI name pattern used to dynamically select the Ubuntu image"
+  type        = string
+}
+
+############################################################
+# Scaling Configuration
+############################################################
+
+variable "master_count" {
+  description = "Number of k3s master (control-plane) nodes to deploy"
+  type        = number
+}
+
+############################################################
+# K3s Cluster Configuration
+############################################################
+
+variable "cluster_token" {
+  description = "Shared secret token used for k3s cluster node registration"
+  type        = string
+  sensitive   = true
 }
 
 variable "k3s_version" {
+  description = "Pinned k3s version installed on master nodes"
   type        = string
-  description = "Pinned k3s version"
 }
 
 variable "tls_san" {
+  description = "Public load balancer IP or DNS added to TLS SAN for API server"
   type        = string
-  description = "Load balancer IP or DNS for TLS SAN"
 }

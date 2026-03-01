@@ -89,7 +89,7 @@ resource "aws_iam_role" "terraform_execution_role" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:${var.terraform_user}"
       }
       Action = "sts:AssumeRole"
     }]
@@ -103,21 +103,56 @@ resource "aws_iam_role" "terraform_execution_role" {
 
 resource "aws_iam_policy" "terraform_infra_policy" {
   name = "terraform-infra-policy"
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+
       # =========================
-      # EC2 & Networking
+      # EC2 - Infrastructure
       # =========================
       {
         Effect = "Allow"
         Action = [
-          "ec2:*"
+          "ec2:Describe*",
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "ec2:ModifyInstanceAttribute",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:ImportKeyPair",
+          "ec2:DeleteKeyPair",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:ModifyVpcAttribute",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:ModifySubnetAttribute",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRouteTable",
+          "ec2:CreateRoute",
+          "ec2:DeleteRoute",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:CreateInternetGateway",
+          "ec2:AttachInternetGateway",
+          "ec2:DetachInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:AllocateAddress",
+          "ec2:AssociateAddress",
+          "ec2:ReleaseAddress"
         ]
         Resource = "*"
       },
+
       # =========================
-      # IAM (minimal)
+      # IAM - Only project roles
       # =========================
       {
         Effect = "Allow"
@@ -129,8 +164,9 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "iam:DetachRolePolicy",
           "iam:DeleteRole"
         ]
-        Resource = "*"
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/k3s-*"
       },
+
       # =========================
       # S3 backend state
       # =========================
@@ -139,7 +175,7 @@ resource "aws_iam_policy" "terraform_infra_policy" {
         Action = [
           "s3:ListBucket"
         ]
-        Resource = "arn:aws:s3:::k3s-platform-demo-tfstate"
+        Resource = aws_s3_bucket.tf_state.arn
       },
       {
         Effect = "Allow"
@@ -148,8 +184,9 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-        Resource = "arn:aws:s3:::k3s-platform-demo-tfstate/*"
+        Resource = "${aws_s3_bucket.tf_state.arn}/*"
       }
+
     ]
   })
 }
@@ -169,7 +206,7 @@ resource "aws_s3_bucket_policy" "tf_state_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "AllowTerraformRoleObjectAccess"
+        Sid    = "AllowTerraformRoleObjectAccess"
         Effect = "Allow"
         Principal = {
           AWS = aws_iam_role.terraform_execution_role.arn
@@ -182,19 +219,19 @@ resource "aws_s3_bucket_policy" "tf_state_policy" {
         Resource = "${aws_s3_bucket.tf_state.arn}/*"
       },
       {
-        Sid = "AllowTerraformRoleListBucket"
+        Sid    = "AllowTerraformRoleListBucket"
         Effect = "Allow"
         Principal = {
           AWS = aws_iam_role.terraform_execution_role.arn
         }
-        Action = "s3:ListBucket"
+        Action   = "s3:ListBucket"
         Resource = aws_s3_bucket.tf_state.arn
       },
       {
-        Sid = "DenyInsecureTransport"
-        Effect = "Deny"
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
         Principal = "*"
-        Action = "s3:*"
+        Action    = "s3:*"
         Resource = [
           aws_s3_bucket.tf_state.arn,
           "${aws_s3_bucket.tf_state.arn}/*"

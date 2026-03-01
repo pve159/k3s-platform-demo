@@ -112,3 +112,81 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+
+################################################################################
+# Security Groups
+################################################################################
+
+resource "aws_security_group" "bastion" {
+  name        = "${var.project}-${var.environment}-bastion-sg"
+  description = "Bastion + NAT + HAProxy SG"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description = "SSH access"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.allowed_admin_cidr]
+  }
+
+  ingress {
+    description = "Allow private subnet traffic (NAT)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = var.private_subnet_cidrs
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project}-${var.environment}-bastion-sg"
+  })
+}
+
+resource "aws_security_group" "cluster" {
+  name   = "${var.project}-${var.environment}-cluster-sg"
+  vpc_id = aws_vpc.this.id
+
+  ingress {
+    description = "Cluster internal communication"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+
+  ingress {
+    description     = "SSH from bastion"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion.id]
+  }
+
+  ingress {
+    description     = "Kubernetes API from bastion only"
+    from_port       = 6443
+    to_port         = 6443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project}-${var.environment}-cluster-sg"
+  })
+}

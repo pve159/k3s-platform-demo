@@ -23,10 +23,10 @@ curl -sfL https://get.k3s.io | \
   INSTALL_K3S_EXEC="server \
     --cluster-init \
     --tls-san ${tls_san} \
-    --node-ip ${NODE_IP} \
+    --node-ip $${NODE_IP} \
     --disable servicelb \
     --disable traefik \
-    --node-name ${NODE_NAME}" \
+    --node-name $${NODE_NAME}" \
   K3S_TOKEN="${cluster_token}" \
   sh -
 
@@ -36,12 +36,12 @@ echo "===== Joining additional control-plane node ====="
 curl -sfL https://get.k3s.io | \
   INSTALL_K3S_VERSION="${k3s_version}" \
   INSTALL_K3S_EXEC="server \
-    --server https://${first_master}:6443 \
+    --server https://${tls_san}:6443 \
     --tls-san ${tls_san} \
-    --node-ip ${NODE_IP} \
+    --node-ip $${NODE_IP} \
     --disable servicelb \
     --disable traefik \
-    --node-name ${NODE_NAME}" \
+    --node-name $${NODE_NAME}" \
   K3S_TOKEN="${cluster_token}" \
   sh -
 

@@ -13,7 +13,6 @@ output "bastion_private_ip" {
   value       = aws_instance.this.private_ip
 }
 
-output "security_group_id" {
-  description = "Security group ID of bastion"
-  value       = aws_security_group.bastion.id
+output "primary_network_interface_id" {
+  value = aws_instance.this.primary_network_interface_id
 }
