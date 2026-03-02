@@ -9,3 +9,9 @@ variable "project_name" {
   type        = string
   default     = "k3s-platform-demo"
 }
+
+variable "terraform_user" {
+  description = "IAM user allowed to assume the Terraform execution role"
+  type        = string
+  default     = "user/pav"
+}
