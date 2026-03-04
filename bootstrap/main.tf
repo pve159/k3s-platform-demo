@@ -179,7 +179,8 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "iam:CreateRole",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
-          "iam:DeleteRole"
+          "iam:DeleteRole",
+          "iam:GetRole"
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/k3s-*"
       },
@@ -198,7 +199,8 @@ resource "aws_iam_policy" "terraform_infra_policy" {
         Effect = "Allow"
         Action = [
           "s3:ListBucket",
-          "s3:GetBucketPolicy"
+          "s3:GetBucketPolicy",
+          "s3:GetBucketAcl"
         ]
         Resource = aws_s3_bucket.tf_state.arn
       },
