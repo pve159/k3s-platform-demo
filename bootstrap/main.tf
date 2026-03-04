@@ -86,13 +86,30 @@ resource "aws_iam_role" "terraform_execution_role" {
   name = "terraform-execution-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:${var.terraform_user}"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:pve159/k3s-platform-demo:*"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:${var.terraform_user}"
+        }
+        Action = "sts:AssumeRole"
       }
-      Action = "sts:AssumeRole"
-    }]
+    ]
   })
   tags = local.common_tags
 }
@@ -244,4 +261,22 @@ resource "aws_s3_bucket_policy" "tf_state_policy" {
       }
     ]
   })
+}
+
+#################################################
+# GitHub OIDC Provider
+#################################################
+
+resource "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = [
+    "sts.amazonaws.com"
+  ]
+
+  thumbprint_list = [
+    "6938fd4d98bab03faadb97b34396831e3780aea1"
+  ]
+
+  tags = local.common_tags
 }
