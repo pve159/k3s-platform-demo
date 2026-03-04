@@ -195,6 +195,15 @@ resource "aws_iam_policy" "terraform_infra_policy" {
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
       },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/terraform-infra-policy"
+      },
 
       # =========================
       # S3 backend state
