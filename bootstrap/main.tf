@@ -206,7 +206,8 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "s3:GetBucket*",
           "s3:GetAccelerateConfiguration",
           "s3:GetLifecycleConfiguration",
-          "s3:GetBucketLifecycleConfiguration"
+          "s3:GetBucketLifecycleConfiguration",
+          "s3:GetReplicationConfiguration"
         ]
         Resource = aws_s3_bucket.tf_state.arn
       },
