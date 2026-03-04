@@ -183,6 +183,13 @@ resource "aws_iam_policy" "terraform_infra_policy" {
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/k3s-*"
       },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetOpenIDConnectProvider"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
 
       # =========================
       # S3 backend state
@@ -190,7 +197,8 @@ resource "aws_iam_policy" "terraform_infra_policy" {
       {
         Effect = "Allow"
         Action = [
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketPolicy"
         ]
         Resource = aws_s3_bucket.tf_state.arn
       },
