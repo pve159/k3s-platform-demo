@@ -33,7 +33,7 @@ resource "aws_instance" "masters" {
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     cluster_token = var.cluster_token
     is_first      = count.index == 0
-    tls_san       = "127.0.0.1"
+    tls_san       = var.tls_san
     k3s_version   = var.k3s_version
   })
   user_data_replace_on_change = true

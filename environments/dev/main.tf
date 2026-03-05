@@ -4,7 +4,7 @@ data "http" "my_ip" {
 
 resource "aws_key_pair" "this" {
   key_name   = "${local.project}-${local.environment}-key"
-  public_key = file(pathexpand(var.ssh_public_key_path))
+  public_key = file("${path.root}/../../keys/cluster.pub")
 
   tags = merge(local.common_tags, {
     Name = "${local.project}-${local.environment}-key"
@@ -45,6 +45,7 @@ module "bastion" {
   common_tags = local.common_tags
 
   vpc_id                    = module.network.vpc_id
+  bastion_private_ip        = var.bastion_private_ip
   public_subnet_id          = module.network.public_subnet_id
   bastion_security_group_id = module.network.bastion_security_group_id
 
@@ -72,8 +73,8 @@ module "k3s_masters" {
   key_name      = aws_key_pair.this.key_name
   master_count  = 2
   cluster_token = random_password.k3s_cluster_token.result
-  tls_san       = "127.0.0.1"
-  k3s_version   = "v1.29.6+k3s1"
+  tls_san       = var.bastion_private_ip
+  k3s_version   = var.k3s_version
 
   ami_name_pattern = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 }
@@ -95,7 +96,7 @@ module "k3s_workers" {
 
   cluster_token = random_password.k3s_cluster_token.result
   k3s_version   = var.k3s_version
-  api_endpoint  = module.bastion.bastion_public_ip
+  api_endpoint  = var.bastion_private_ip
 
   ami_name_pattern = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 

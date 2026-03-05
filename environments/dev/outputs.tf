@@ -15,3 +15,8 @@ output "kubeconfig_fetch_command" {
 ssh -J ubuntu@${module.bastion.bastion_public_ip} ubuntu@${module.k3s_masters.master_private_ips[0]} "sudo cat /etc/rancher/k3s/k3s.yaml"
 EOT
 }
+
+output "kubernetes_tunnel" {
+  description = "SSH tunnel command to access Kubernetes API securely"
+  value       = "ssh -N -L 6443:127.0.0.1:6443 -J ubuntu@${module.bastion.bastion_public_ip} ubuntu@${module.k3s_masters.master_private_ips[0]}"
+}
