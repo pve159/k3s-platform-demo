@@ -8,11 +8,6 @@ variable "region" {
   default     = "eu-west-3"
 }
 
-variable "terraform_role_arn" {
-  description = "IAM role ARN assumed by Terraform for infrastructure provisioning"
-  type        = string
-}
-
 ############################################################
 # Networking Configuration
 ############################################################
@@ -23,6 +18,11 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "bastion_private_ip" {
+  description = "Private IP address assigned to the bastion host"
+  type        = string
+  default     = "10.0.1.10"
+}
 variable "public_subnet_cidr" {
   description = "CIDR block for the public subnet (bastion subnet)"
   type        = string
@@ -71,14 +71,4 @@ variable "k3s_version" {
   description = "Pinned version of k3s installed on cluster nodes"
   type        = string
   default     = "v1.29.6+k3s1"
-}
-
-############################################################
-# SSH Configuration
-############################################################
-
-variable "ssh_public_key_path" {
-  description = "Path to the local SSH public key used to create the EC2 key pair"
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
 }

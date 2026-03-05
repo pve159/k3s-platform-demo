@@ -26,6 +26,10 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "bastion_private_ip" {
+  description = "Private IP address assigned to the bastion host"
+  type        = string
+}
 variable "public_subnet_id" {
   description = "Public subnet ID where the bastion instance is launched"
   type        = string
