@@ -119,108 +119,98 @@ resource "aws_iam_role" "terraform_execution_role" {
 #################################################
 
 resource "aws_iam_policy" "terraform_infra_policy" {
+
   name = "terraform-infra-policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [
 
-      # =========================
-      # EC2 - Infrastructure
-      # =========================
+      #################################################
+      # EC2 / VPC infrastructure
+      #################################################
+
       {
         Effect = "Allow"
         Action = [
           "ec2:Describe*",
+          "ec2:Create*",
+          "ec2:Modify*",
+          "ec2:Delete*",
+          "ec2:Attach*",
+          "ec2:Detach*",
           "ec2:RunInstances",
-          "ec2:TerminateInstances",
-          "ec2:ModifyInstanceAttribute",
-          "ec2:CreateTags",
-          "ec2:DeleteTags",
-          "ec2:ImportKeyPair",
-          "ec2:DeleteKeyPair",
-          "ec2:CreateSecurityGroup",
-          "ec2:DeleteSecurityGroup",
-          "ec2:AuthorizeSecurityGroupIngress",
-          "ec2:AuthorizeSecurityGroupEgress",
-          "ec2:RevokeSecurityGroupIngress",
-          "ec2:RevokeSecurityGroupEgress",
-          "ec2:CreateVpc",
-          "ec2:DeleteVpc",
-          "ec2:ModifyVpcAttribute",
-          "ec2:CreateSubnet",
-          "ec2:DeleteSubnet",
-          "ec2:ModifySubnetAttribute",
-          "ec2:CreateRouteTable",
-          "ec2:DeleteRouteTable",
-          "ec2:CreateRoute",
-          "ec2:DeleteRoute",
-          "ec2:AssociateRouteTable",
-          "ec2:DisassociateRouteTable",
-          "ec2:CreateInternetGateway",
-          "ec2:AttachInternetGateway",
-          "ec2:DetachInternetGateway",
-          "ec2:DeleteInternetGateway",
-          "ec2:AllocateAddress",
-          "ec2:AssociateAddress",
-          "ec2:ReleaseAddress"
+          "ec2:TerminateInstances"
         ]
         Resource = "*"
       },
 
-      # =========================
-      # IAM - Only project roles
-      # =========================
+      #################################################
+      # IAM roles used by Terraform
+      #################################################
+
       {
         Effect = "Allow"
         Action = [
           "iam:GetRole",
           "iam:ListRolePolicies",
           "iam:ListAttachedRolePolicies",
-          "iam:PassRole",
           "iam:CreateRole",
+          "iam:DeleteRole",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
-          "iam:DeleteRole"
+          "iam:PassRole"
         ]
         Resource = [
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/k3s-*",
           "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/terraform-execution-role"
         ]
       },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetOpenIDConnectProvider"
-        ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
-      },
+
+      #################################################
+      # IAM policy management
+      #################################################
+
       {
         Effect = "Allow"
         Action = [
           "iam:GetPolicy",
           "iam:GetPolicyVersion",
-          "iam:ListPolicyVersions"
+          "iam:ListPolicyVersions",
+          "iam:CreatePolicy",
+          "iam:DeletePolicy"
         ]
-        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/terraform-infra-policy"
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/*"
       },
 
-      # =========================
-      # S3 backend state
-      # =========================
+      #################################################
+      # OIDC provider for GitHub
+      #################################################
+
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetOpenIDConnectProvider",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider"
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
+
+      #################################################
+      # Terraform S3 backend
+      #################################################
+
       {
         Effect = "Allow"
         Action = [
           "s3:ListBucket",
-          "s3:GetBucket*",
-          "s3:GetAccelerateConfiguration",
-          "s3:GetLifecycleConfiguration",
-          "s3:GetBucketLifecycleConfiguration",
-          "s3:GetReplicationConfiguration",
-          "s3:GetEncryptionConfiguration"
+          "s3:Get*"
         ]
         Resource = aws_s3_bucket.tf_state.arn
       },
+
       {
         Effect = "Allow"
         Action = [
