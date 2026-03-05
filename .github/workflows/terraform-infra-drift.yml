@@ -1,0 +1,51 @@
+
+name: Terraform Drift Detection (dev)
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-drift-dev
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env:
+      TF_WORKING_DIR: environments/dev
+      TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.5
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform Plan (drift detection)
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -detailed-exitcode
