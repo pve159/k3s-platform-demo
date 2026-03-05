@@ -23,7 +23,7 @@ jobs:
 
     env:
       TF_WORKING_DIR: environments/dev
-      TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+      TF_PLUGIN_CACHE_DIR: $HOME/.terraform.d/plugin-cache
 
     steps:
 
