@@ -141,7 +141,9 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "ec2:Attach*",
           "ec2:Detach*",
           "ec2:RunInstances",
-          "ec2:TerminateInstances"
+          "ec2:TerminateInstances",
+          "ec2:DisassociateAddress",
+          "ec2:ReleaseAddress"
         ]
         Resource = "*"
       },
