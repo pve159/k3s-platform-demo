@@ -27,6 +27,7 @@ jobs:
       TF_TERRAFORM_DIR: .terraform
       TF_INPUT: false
       TF_IN_AUTOMATION: true
+      TF_VAR_ssh_allowed_ip: ${{ vars.MY_PUBLIC_IP }}
 
     steps:
 
