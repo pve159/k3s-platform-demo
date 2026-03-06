@@ -1,19 +1,19 @@
-name: Terraform (dev)
+name: Terraform Reusable
 
 on:
-  pull_request:
-    paths:
-      - 'modules/**'
-      - 'environments/dev/**'
-
-  workflow_dispatch:
+  workflow_call:
     inputs:
+      environment:
+        required: true
+        type: string
+
+      working_dir:
+        required: true
+        type: string
+
       force_apply:
-        description: "Force Terraform apply"
-        type: choice
-        options:
-          - "false"
-          - "true"
+        required: false
+        type: string
         default: "false"
 
 permissions:
@@ -22,19 +22,20 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: terraform-dev
+  group: terraform-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
 
   plan:
+
     runs-on: ubuntu-latest
 
     outputs:
       changes: ${{ steps.plan.outputs.changes }}
 
     env:
-      TF_WORKING_DIR: environments/dev
+      TF_WORKING_DIR: ${{ inputs.working_dir }}
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
       TF_INPUT: false
       TF_IN_AUTOMATION: true
@@ -46,7 +47,7 @@ jobs:
 
       - uses: ./.github/actions/terraform-setup
         with:
-          working_dir: environments/dev
+          working_dir: ${{ inputs.working_dir }}
           aws_role: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
           aws_region: ${{ vars.AWS_REGION }}
 
@@ -72,7 +73,7 @@ jobs:
 
           echo "## Terraform Lint Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           cat tflint.txt >> $GITHUB_STEP_SUMMARY
 
@@ -85,7 +86,6 @@ jobs:
           exitcode=$?
 
           if [ $exitcode -eq 1 ]; then
-            echo "Terraform plan failed"
             exit 1
           fi
 
@@ -102,28 +102,13 @@ jobs:
         run: |
           echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           terraform show -no-color tfplan | grep -E "Plan:|No changes" >> $GITHUB_STEP_SUMMARY
 
-      - name: Generate Terraform Plan Diff
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          echo "### Terraform Plan (dev)" > plan.md
-          echo "" >> plan.md
-          echo '```diff' >> plan.md
-          terraform show -no-color tfplan >> plan.md
-          echo '```' >> plan.md
-
-      - name: Comment Terraform Plan
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          path: ${{ env.TF_WORKING_DIR }}/plan.md
-
-      # -------------------------
+      # --------------------
       # Infracost
-      # -------------------------
+      # --------------------
 
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
@@ -141,8 +126,6 @@ jobs:
       - name: Generate Infracost diff
         if: github.event_name == 'pull_request'
         working-directory: ${{ env.TF_WORKING_DIR }}
-        env:
-          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
         run: |
           infracost diff \
             --path tfplan.json \
@@ -150,6 +133,7 @@ jobs:
             --out-file infracost-diff.json
 
       - name: Show Infracost summary
+        if: github.event_name == 'pull_request'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           echo "## Infracost Estimate" >> $GITHUB_STEP_SUMMARY
@@ -158,32 +142,62 @@ jobs:
             --path infracost-diff.json \
             --format github-comment >> $GITHUB_STEP_SUMMARY
 
-      - name: Post Infracost comment
+      - name: Generate Terraform PR comment
         if: github.event_name == 'pull_request'
-        uses: infracost/actions/comment@v1
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "## Terraform Plan (${{ inputs.environment }})" > plan.md
+          echo "" >> plan.md
+
+          echo "### Plan summary" >> plan.md
+          echo '```' >> plan.md
+          terraform show -no-color tfplan | grep -E "Plan:|No changes" >> plan.md
+          echo '```' >> plan.md
+
+          echo "" >> plan.md
+          echo "### Cost estimate (${{ inputs.environment }})" >> plan.md
+          echo '```' >> plan.md
+          infracost output \
+            --path infracost-diff.json \
+            --format table >> plan.md
+          echo '```' >> plan.md
+
+          echo "" >> plan.md
+          echo "### Full plan" >> plan.md
+          echo '```diff' >> plan.md
+          terraform show -no-color tfplan >> plan.md
+          echo '```' >> plan.md
+
+      - name: Comment Terraform Plan
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          path: ${{ env.TF_WORKING_DIR }}/infracost-diff.json
+          path: ${{ env.TF_WORKING_DIR }}/plan.md
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ inputs.environment }}
           path: ${{ env.TF_WORKING_DIR }}/tfplan
 
 
   apply:
+
     needs: plan
+
     if: |
       github.event_name == 'workflow_dispatch' &&
       (
         needs.plan.outputs.changes == 'true' ||
-        github.event.inputs.force_apply == 'true'
+        inputs.force_apply == 'true'
       )
+
     runs-on: ubuntu-latest
-    environment: dev
+
+    environment: ${{ inputs.environment }}
 
     env:
-      TF_WORKING_DIR: environments/dev
+      TF_WORKING_DIR: ${{ inputs.working_dir }}
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
       TF_INPUT: false
       TF_IN_AUTOMATION: true
@@ -195,14 +209,14 @@ jobs:
 
       - uses: ./.github/actions/terraform-setup
         with:
-          working_dir: environments/dev
+          working_dir: ${{ inputs.working_dir }}
           aws_role: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
           aws_region: ${{ vars.AWS_REGION }}
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
         with:
-          name: terraform-plan
+          name: terraform-plan-${{ inputs.environment }}
           path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply

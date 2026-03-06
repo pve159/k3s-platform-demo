@@ -24,11 +24,12 @@ data "aws_ami" "this" {
 resource "aws_instance" "masters" {
   count = var.master_count
 
-  ami                    = data.aws_ami.this.id
-  instance_type          = var.instance_type
-  subnet_id              = var.private_subnet_ids[count.index % length(var.private_subnet_ids)]
-  key_name               = var.key_name
-  vpc_security_group_ids = [var.cluster_security_group_id]
+  ami                         = data.aws_ami.this.id
+  instance_type               = var.instance_type
+  subnet_id                   = var.private_subnet_ids[count.index % length(var.private_subnet_ids)]
+  key_name                    = var.key_name
+  vpc_security_group_ids      = [var.cluster_security_group_id]
+  associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     cluster_token = var.cluster_token
