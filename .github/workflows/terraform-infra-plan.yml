@@ -23,7 +23,9 @@ jobs:
 
     env:
       TF_WORKING_DIR: environments/dev
-      TF_PLUGIN_CACHE_DIR: ${{github.workspace}}/.terraform/providers
+      TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+      TF_INPUT: false
+      TF_IN_AUTOMATION: true
 
     steps:
 
@@ -39,12 +41,14 @@ jobs:
           terraform_version: 1.14.5
 
       - name: Create Terraform plugin cache dir
-        run: mkdir -p "${{ env.TF_PLUGIN_CACHE_DIR }}"
+        run: mkdir -p ~/.terraform.d/plugin-cache
 
       - name: Cache Terraform providers
         uses: actions/cache@v4
         with:
-          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
           key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
             terraform-${{ runner.os }}-
