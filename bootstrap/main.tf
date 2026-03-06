@@ -142,8 +142,16 @@ resource "aws_iam_policy" "terraform_infra_policy" {
           "ec2:Detach*",
           "ec2:RunInstances",
           "ec2:TerminateInstances",
+          "ec2:AllocateAddress",
+          "ec2:AssociateAddress",
           "ec2:DisassociateAddress",
-          "ec2:ReleaseAddress"
+          "ec2:ReleaseAddress",
+          "ec2:ImportKeyPair",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupEgress"
         ]
         Resource = "*"
       },

@@ -35,18 +35,6 @@ runs:
         restore-keys: |
           terraform-${{ runner.os }}-
 
-    - name: Create Terraform .terraform dir
-      shell: bash
-      run: mkdir -p ${{ inputs.working_dir }}/.terraform
-
-    - name: Cache Terraform working dir
-      uses: actions/cache@v4
-      with:
-        path: ${{ inputs.working_dir }}/.terraform
-        key: terraform-dir-${{ runner.os }}-${{ hashFiles('environments/dev/.terraform.lock.hcl') }}
-        restore-keys: |
-          terraform-dir-${{ runner.os }}-
-
     - name: Terraform Init
       shell: bash
       working-directory: ${{ inputs.working_dir }}
