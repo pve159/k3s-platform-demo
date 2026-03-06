@@ -149,7 +149,13 @@ jobs:
             --out-file infracost-diff.json
 
       - name: Show Infracost summary
-        run: infracost output --path infracost-diff.json >> $GITHUB_STEP_SUMMARY
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "## Infracost Estimate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          infracost output \
+            --path infracost-diff.json \
+            --format table >> $GITHUB_STEP_SUMMARY
 
       - name: Post Infracost comment
         if: github.event_name == 'pull_request'
