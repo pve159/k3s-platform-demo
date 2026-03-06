@@ -148,6 +148,9 @@ jobs:
             --format json \
             --out-file infracost-diff.json
 
+      - name: Show Infracost summary
+        run: infracost output --path infracost-diff.json >> $GITHUB_STEP_SUMMARY
+
       - name: Post Infracost comment
         if: github.event_name == 'pull_request'
         uses: infracost/actions/comment@v1
