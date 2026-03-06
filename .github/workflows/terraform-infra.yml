@@ -20,7 +20,6 @@ jobs:
 
   plan:
     runs-on: ubuntu-latest
-    environment: dev
 
     outputs:
       changes: ${{ steps.plan.outputs.changes }}
@@ -39,6 +38,8 @@ jobs:
       - uses: ./.github/actions/terraform-setup
         with:
           working_dir: environments/dev
+          aws_role: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws_region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Format
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -103,6 +104,8 @@ jobs:
       - uses: ./.github/actions/terraform-setup
         with:
           working_dir: environments/dev
+          aws_role: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+          aws_region: ${{ vars.AWS_REGION }}
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
