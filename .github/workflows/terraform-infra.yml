@@ -9,7 +9,10 @@ on:
     inputs:
       force_apply:
         description: "Force Terraform apply"
-        required: false
+        type: choice
+        options:
+          - "false"
+          - "true"
         default: "false"
 
 permissions:
