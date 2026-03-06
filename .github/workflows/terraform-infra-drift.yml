@@ -37,4 +37,30 @@ jobs:
 
       - name: Terraform Plan (drift detection)
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -detailed-exitcode
+        run: |
+          set +e
+
+          terraform plan -input=false -no-color -detailed-exitcode > plan.txt
+          exitcode=$?
+
+          echo "## Terraform Drift Detection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ $exitcode -eq 0 ]; then
+            echo "✅ No drift detected." | tee -a $GITHUB_STEP_SUMMARY
+
+          elif [ $exitcode -eq 2 ]; then
+            echo "⚠️ Drift detected!" | tee -a $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Terraform Plan" >> $GITHUB_STEP_SUMMARY
+            echo '```diff' >> $GITHUB_STEP_SUMMARY
+            grep -E "Plan:" plan.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+
+          else
+            echo "❌ Terraform error during drift detection." | tee -a $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
