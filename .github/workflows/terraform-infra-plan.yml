@@ -23,6 +23,7 @@ jobs:
 
     env:
       TF_WORKING_DIR: environments/dev
+      TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
     steps:
 
@@ -48,8 +49,6 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
-        env:
-          TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
         run: terraform init
 
       - name: Terraform Format
