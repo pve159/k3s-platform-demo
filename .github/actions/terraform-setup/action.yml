@@ -10,8 +10,6 @@ runs:
 
   steps:
 
-    - uses: actions/checkout@v4
-
     - uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
