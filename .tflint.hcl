@@ -7,3 +7,7 @@ plugin "aws" {
 config {
   module = true
 }
+
+rule "aws_security_group_rule_invalid_cidr_blocks" {
+  enabled = true
+}
