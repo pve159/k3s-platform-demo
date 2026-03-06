@@ -23,7 +23,7 @@ jobs:
 
     env:
       TF_WORKING_DIR: environments/dev
-      TF_PLUGIN_CACHE_DIR: .terraform.d/plugin-cache
+      TF_PLUGIN_CACHE_DIR: ${{github.workspace}}/.terraform.d/plugin-cache
       TF_TERRAFORM_DIR: .terraform
       TF_INPUT: false
       TF_IN_AUTOMATION: true
