@@ -1,0 +1,88 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'environments/**'
+
+  workflow_dispatch:
+    inputs:
+      force_apply:
+        description: "Force Terraform apply"
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+
+  detect:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Detect changed files
+        id: detect
+        run: |
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            envs=$(ls environments)
+          else
+            git fetch origin ${{ github.base_ref }} --depth=1
+
+            changed=$(git diff --name-only origin/${{ github.base_ref }})
+
+            envs=""
+
+            if echo "$changed" | grep -q "^modules/"; then
+              envs=$(ls environments)
+            else
+              for e in $(ls environments); do
+                if echo "$changed" | grep -q "^environments/$e/"; then
+                  envs="$envs $e"
+                fi
+              done
+            fi
+          fi
+
+          envs=$(echo $envs)
+
+          echo "Detected environments: $envs"
+
+          if [ -z "$envs" ]; then
+            matrix='{"environment":[]}'
+          else
+            matrix=$(printf '%s\n' $envs | jq -R . | jq -s '{environment: .}')
+          fi
+
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+
+  terraform:
+
+    needs: detect
+
+    strategy:
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+
+    uses: ./.github/workflows/terraform-reusable.yml
+
+    with:
+      environment: ${{ matrix.environment }}
+      working_dir: environments/${{ matrix.environment }}
+      force_apply: ${{ github.event.inputs.force_apply }}
+
+    secrets: inherit

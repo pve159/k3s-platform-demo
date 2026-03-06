@@ -2,7 +2,7 @@ module "platform" {
   source = "../../modules/platform"
 
   project     = "k3s-platform"
-  environment = "dev"
+  environment = "prod"
 
   region = var.region
 }
