@@ -72,3 +72,13 @@ variable "k3s_version" {
   type        = string
   default     = "v1.29.6+k3s1"
 }
+
+############################################################
+# SSH Configuration
+############################################################
+
+variable "ssh_allowed_ip" {
+  description = "CIDR block representing the IP range allowed to access the bastion host via SSH"
+  type        = string
+  default     = ""
+}
