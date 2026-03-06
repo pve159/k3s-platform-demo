@@ -22,8 +22,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: terraform-dev-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: terraform-dev
+  cancel-in-progress: false
 
 jobs:
 
