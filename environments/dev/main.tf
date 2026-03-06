@@ -2,6 +2,10 @@ data "http" "my_ip" {
   url = "https://checkip.amazonaws.com"
 }
 
+locals {
+  ssh_ip = var.ssh_allowed_ip != "" ? var.ssh_allowed_ip : chomp(data.http.my_ip.response_body)
+}
+
 resource "aws_key_pair" "this" {
   key_name   = "${local.project}-${local.environment}-key"
   public_key = file("${path.root}/../../keys/cluster.pub")
@@ -34,7 +38,7 @@ module "network" {
   public_subnet_cidr   = var.public_subnet_cidr
   private_subnet_cidrs = var.private_subnet_cidrs
   azs                  = var.azs
-  allowed_admin_cidr   = "${chomp(data.http.my_ip.response_body)}/32"
+  allowed_admin_cidr   = "${local.ssh_ip}/32"
 }
 
 module "bastion" {
@@ -51,7 +55,7 @@ module "bastion" {
 
   key_name           = aws_key_pair.this.key_name
   instance_type      = var.bastion_instance_type
-  allowed_admin_cidr = "${chomp(data.http.my_ip.response_body)}/32"
+  allowed_admin_cidr = "${local.ssh_ip}/32"
 
   master_private_ips = module.k3s_masters.master_private_ips
 
