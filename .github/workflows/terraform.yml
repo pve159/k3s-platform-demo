@@ -65,7 +65,7 @@ jobs:
           if [ -z "$envs" ]; then
             matrix='{"environment":[]}'
           else
-            matrix=$(printf '%s\n' $envs | jq -R . | jq -s '{environment: .}')
+            matrix=$(printf '%s\n' $envs | jq -R . | jq -cs '{environment: .}')
           fi
 
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
@@ -83,6 +83,6 @@ jobs:
     with:
       environment: ${{ matrix.environment }}
       working_dir: environments/${{ matrix.environment }}
-      force_apply: ${{ github.event.inputs.force_apply }}
+      force_apply: ${{ github.event.inputs.force_apply || 'false' }}
 
     secrets: inherit
