@@ -5,6 +5,7 @@ on:
     paths:
       - 'modules/**'
       - 'environments/dev/**'
+
   workflow_dispatch:
     inputs:
       force_apply:
@@ -68,6 +69,7 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           tflint --recursive | tee tflint.txt
+
           echo "## Terraform Lint Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
@@ -79,7 +81,7 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           set +e
-          terraform plan -no-color -compact-warnings -detailed-exitcode -out=tfplan
+          terraform plan -input=false -no-color -compact-warnings -detailed-exitcode -out=tfplan
           exitcode=$?
 
           if [ $exitcode -eq 1 ]; then
@@ -93,7 +95,7 @@ jobs:
             echo "changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-          terraform show -no-color tfplan > plan.txt
+          terraform show -json tfplan > tfplan.json
 
       - name: Terraform Plan Summary
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -104,18 +106,60 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           terraform show -no-color tfplan | grep -E "Plan:|No changes" >> $GITHUB_STEP_SUMMARY
 
+      - name: Generate Terraform Plan Diff
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "### Terraform Plan (dev)" > plan.md
+          echo "" >> plan.md
+          echo '```diff' >> plan.md
+          terraform show -no-color tfplan >> plan.md
+          echo '```' >> plan.md
+
+      - name: Comment Terraform Plan
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: ${{ env.TF_WORKING_DIR }}/plan.md
+
+      # -------------------------
+      # Infracost
+      # -------------------------
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost breakdown
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          infracost breakdown \
+            --path tfplan.json \
+            --format json \
+            --out-file infracost.json
+
+      - name: Generate Infracost diff
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+        run: |
+          infracost diff \
+            --path tfplan.json \
+            --format json \
+            --out-file infracost-diff.json
+
+      - name: Post Infracost comment
+        if: github.event_name == 'pull_request'
+        uses: infracost/actions/comment@v1
+        with:
+          path: ${{ env.TF_WORKING_DIR }}/infracost-diff.json
+
       - name: Upload Terraform Plan
         if: steps.plan.outputs.changes == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: terraform-plan
           path: ${{ env.TF_WORKING_DIR }}/tfplan
-
-      - name: Comment Terraform Plan
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          path: ${{ env.TF_WORKING_DIR }}/plan.txt
 
 
   apply:
@@ -154,4 +198,4 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve tfplan
