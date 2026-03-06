@@ -1,0 +1,51 @@
+name: Terraform Setup
+description: Setup Terraform with AWS auth and caching
+
+inputs:
+  working_dir:
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.14.5
+
+    - name: Create Terraform plugin cache dir
+      shell: bash
+      run: mkdir -p ${{ github.workspace }}/.terraform.d/plugin-cache
+
+    - name: Cache Terraform plugins
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/.terraform.d/plugin-cache
+        key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+        restore-keys: |
+          terraform-${{ runner.os }}-
+
+    - name: Create Terraform .terraform dir
+      shell: bash
+      run: mkdir -p ${{ inputs.working_dir }}/.terraform
+
+    - name: Cache Terraform working dir
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.working_dir }}/.terraform
+        key: terraform-dir-${{ runner.os }}-${{ hashFiles('environments/dev/.terraform.lock.hcl') }}
+        restore-keys: |
+          terraform-dir-${{ runner.os }}-
+
+    - name: Terraform Init
+      shell: bash
+      working-directory: ${{ inputs.working_dir }}
+      run: terraform init

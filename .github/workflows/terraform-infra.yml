@@ -1,0 +1,111 @@
+name: Terraform (dev)
+
+on:
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'environments/dev/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  plan:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    outputs:
+      changes: ${{ steps.plan.outputs.changes }}
+
+    env:
+      TF_WORKING_DIR: environments/dev
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
+      TF_INPUT: false
+      TF_IN_AUTOMATION: true
+      TF_VAR_ssh_allowed_ip: ${{ vars.MY_PUBLIC_IP }}
+
+    steps:
+
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working_dir: environments/dev
+
+      - name: Terraform Format
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set +e
+          terraform plan -no-color -compact-warnings -detailed-exitcode -out=tfplan
+          exitcode=$?
+
+          if [ $exitcode -eq 1 ]; then
+            echo "Terraform plan failed"
+            exit 1
+          fi
+
+          if [ $exitcode -eq 2 ]; then
+            echo "changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Upload Terraform Plan
+        if: steps.plan.outputs.changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+
+      - name: Comment Terraform Plan
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: ${{ env.TF_WORKING_DIR }}/plan.txt
+
+
+  apply:
+    needs: plan
+    if: github.event_name == 'workflow_dispatch' && needs.plan.outputs.changes == 'true'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env:
+      TF_WORKING_DIR: environments/dev
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
+      TF_INPUT: false
+      TF_IN_AUTOMATION: true
+      TF_VAR_ssh_allowed_ip: ${{ vars.MY_PUBLIC_IP }}
+
+    steps:
+
+      - uses: ./.github/actions/terraform-setup
+        with:
+          working_dir: environments/dev
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve tfplan
