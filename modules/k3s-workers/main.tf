@@ -48,12 +48,13 @@ locals {
 resource "aws_instance" "workers" {
   for_each = local.worker_map
 
-  ami                    = data.aws_ami.this.id
-  instance_type          = var.instance_type
-  subnet_id              = each.value.subnet_id
-  availability_zone      = each.value.az
-  key_name               = var.key_name
-  vpc_security_group_ids = [var.cluster_security_group_id]
+  ami                         = data.aws_ami.this.id
+  instance_type               = var.instance_type
+  subnet_id                   = each.value.subnet_id
+  availability_zone           = each.value.az
+  key_name                    = var.key_name
+  vpc_security_group_ids      = [var.cluster_security_group_id]
+  associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     cluster_token = var.cluster_token
