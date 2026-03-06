@@ -21,7 +21,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: terraform-dev-${{ github.ref }}
+  group: terraform-dev-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -51,11 +51,22 @@ jobs:
 
       - name: Terraform Format
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform fmt -check
+        run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: tflint --init
+
+      - name: Run TFLint
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: tflint --recursive
 
       - name: Terraform Plan
         id: plan
@@ -77,6 +88,15 @@ jobs:
           fi
 
           terraform show -no-color tfplan > plan.txt
+
+      - name: Terraform Plan Summary
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          terraform show -no-color tfplan | grep -E "Plan:|No changes" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Terraform Plan
         if: steps.plan.outputs.changes == 'true'
