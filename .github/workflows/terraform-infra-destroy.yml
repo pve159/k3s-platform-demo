@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: terraform-destroy-dev
+  group: terraform-dev-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -23,20 +23,14 @@ jobs:
 
     env:
       TF_WORKING_DIR: environments/dev
-      TF_PLUGIN_CACHE_DIR: $HOME/.terraform.d/plugin-cache
+      TF_PLUGIN_CACHE_DIR: .terraform.d/plugin-cache
+      TF_TERRAFORM_DIR: .terraform
+      TF_INPUT: false
+      TF_IN_AUTOMATION: true
 
     steps:
 
       - uses: actions/checkout@v4
-
-      - name: Create Terraform plugin cache dir
-        run: mkdir -p ${{ env.TF_PLUGIN_CACHE_DIR }}
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -46,6 +40,28 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.14.5
+
+      - name: Create Terraform plugin cache dir
+        run: mkdir -p ${{ env.TF_PLUGIN_CACHE_DIR }}
+
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-
+
+      - name: Create Terraform .terraform dir
+        run: mkdir -p ${{ env.TF_WORKING_DIR }}/${{ env.TF_TERRAFORM_DIR }}
+
+      - name: Cache Terraform working dir
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_WORKING_DIR }}/${{ env.TF_TERRAFORM_DIR }}
+          key: terraform-dir-${{ runner.os }}-${{ hashFiles('environments/dev/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-dir-${{ runner.os }}-
 
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
