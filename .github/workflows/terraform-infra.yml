@@ -6,6 +6,11 @@ on:
       - 'modules/**'
       - 'environments/dev/**'
   workflow_dispatch:
+    inputs:
+      force_apply:
+        description: "Force Terraform apply"
+        required: false
+        default: "false"
 
 permissions:
   id-token: write
@@ -86,7 +91,12 @@ jobs:
 
   apply:
     needs: plan
-    if: github.event_name == 'workflow_dispatch' && needs.plan.outputs.changes == 'true'
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (
+        needs.plan.outputs.changes == 'true' ||
+        github.event.inputs.force_apply == 'true'
+      )
     runs-on: ubuntu-latest
     environment: dev
 
