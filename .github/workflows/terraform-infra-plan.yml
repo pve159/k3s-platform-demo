@@ -37,7 +37,10 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.14.5
-          
+
+      - name: Create Terraform plugin cache dir
+        run: mkdir -p ${{ env.TF_PLUGIN_CACHE_DIR }} && echo "Plugin cache directory: ${{ env.TF_PLUGIN_CACHE_DIR }}"
+
       - name: Cache Terraform providers
         uses: actions/cache@v4
         with:
