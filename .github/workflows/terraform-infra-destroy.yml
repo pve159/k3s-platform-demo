@@ -39,10 +39,6 @@ jobs:
           aws_role: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
           aws_region: ${{ vars.AWS_REGION }}
 
-      - name: Terraform Plan Destroy
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -destroy
-
       - name: Terraform Destroy
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -input=false -auto-approve
