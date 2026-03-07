@@ -8,6 +8,13 @@ on:
 
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Environment to deploy"
+        type: choice
+        options:
+          - dev
+          - prod
+        default: "dev"
       force_apply:
         description: "Force Terraform apply"
         type: choice
@@ -39,7 +46,7 @@ jobs:
         run: |
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            envs=$(ls environments)
+            envs="${{ github.event.inputs.environment }}"
           else
             git fetch origin ${{ github.base_ref }} --depth=1
 
