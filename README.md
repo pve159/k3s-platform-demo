@@ -6,83 +6,110 @@
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black)
 
 A **DevOps / Platform Engineering portfolio project** demonstrating how
-to deploy and operate a **production‑style Kubernetes platform on AWS**
+to deploy and operate a **production-style Kubernetes platform on AWS**
 using **Terraform**, **GitHub Actions**, and **k3s**.
 
-This project demonstrates modern DevOps practices:
+------------------------------------------------------------------------
 
--   Infrastructure as Code with **Terraform**
--   **Modular infrastructure design**
--   **Multi‑environment deployments** (dev / prod)
--   Secure AWS authentication with **GitHub OIDC**
--   **Infrastructure CI/CD**
--   **Cost visibility (FinOps)** using Infracost
--   **Static analysis** using TFLint
--   **Drift detection**
--   Secure Kubernetes networking architecture
+# Purpose of This Project
 
-The repository demonstrates how a single engineer can build a
-**production‑like Kubernetes platform using DevOps practices**.
+This repository demonstrates how to design and automate a **small
+Kubernetes platform using modern DevOps practices**.
+
+The project showcases the following concepts:
+
+-   Infrastructure as Code using **Terraform**
+-   **Modular infrastructure architecture**
+-   **CI/CD pipelines for infrastructure**
+-   Secure AWS authentication using **GitHub OIDC**
+-   **Cost-aware infrastructure (FinOps)** using Infracost
+-   **Static analysis** with TFLint
+-   **Infrastructure drift detection**
+-   Automated Kubernetes cluster bootstrap
+
+The goal is to illustrate how a **single engineer can build and operate
+a production-like Kubernetes platform** using DevOps principles.
+
+------------------------------------------------------------------------
+
+# Platform Engineering Concepts Demonstrated
+
+This project demonstrates several key platform engineering and DevOps
+concepts:
+
+-   Infrastructure as Code using Terraform modules
+-   Immutable infrastructure provisioning
+-   Multi-environment infrastructure management
+-   Infrastructure CI/CD pipelines
+-   Secure cloud authentication using GitHub OIDC
+-   Cost-aware infrastructure management (FinOps)
+-   Infrastructure drift detection
+-   Private Kubernetes cluster networking
+-   Kubernetes control-plane high availability
 
 ------------------------------------------------------------------------
 
 # Architecture Overview
 
-The platform deploys a **high‑availability k3s Kubernetes cluster on
+The platform deploys a **high-availability k3s Kubernetes cluster on
 AWS**.
 
 Infrastructure components:
 
--   VPC
--   Public subnet
+-   VPC networking
+-   Public subnet for bastion host
 -   Private subnets across two availability zones
 -   Bastion host acting as:
     -   SSH entry point
-    -   NAT instance for private subnets
+    -   NAT instance for private nodes
     -   HAProxy load balancer for Kubernetes API
--   2 Kubernetes control‑plane nodes
+-   2 Kubernetes control-plane nodes
 -   4 worker nodes
 
 ------------------------------------------------------------------------
 
-# AWS Infrastructure Architecture
+# AWS Network Architecture
 
 ``` mermaid
-flowchart TD
+flowchart TB
 
 Internet --> Bastion
 
 subgraph AWS VPC
-    Bastion --> HAProxy
+    Bastion["Bastion / NAT / HAProxy"]
 
-    subgraph Private AZ1
-        Master1
+    subgraph Public Subnet
+        Bastion
+    end
+
+    subgraph Private Subnet AZ1
+        Master1["k3s master 1"]
         Worker1
         Worker2
     end
 
-    subgraph Private AZ2
-        Master2
+    subgraph Private Subnet AZ2
+        Master2["k3s master 2"]
         Worker3
         Worker4
     end
 
-    HAProxy --> Master1
-    HAProxy --> Master2
+    Bastion --> Master1
+    Bastion --> Master2
 
-    Worker1 --> HAProxy
-    Worker2 --> HAProxy
-    Worker3 --> HAProxy
-    Worker4 --> HAProxy
+    Worker1 --> Bastion
+    Worker2 --> Bastion
+    Worker3 --> Bastion
+    Worker4 --> Bastion
 end
 ```
 
 Key characteristics:
 
 -   Only the **bastion host has a public IP**
--   Kubernetes nodes are deployed in **private subnets**
--   Bastion provides **NAT for outbound traffic**
--   HAProxy provides **API load balancing across masters**
+-   Kubernetes nodes run in **private subnets**
+-   Bastion provides **NAT for outbound internet traffic**
+-   HAProxy **load balances the Kubernetes API across masters**
 
 ------------------------------------------------------------------------
 
@@ -91,8 +118,8 @@ Key characteristics:
 ``` mermaid
 flowchart TD
 
-kubectl --> SSH_Tunnel
-SSH_Tunnel --> Bastion
+kubectl --> Tunnel
+Tunnel --> Bastion
 
 Bastion --> HAProxy
 
@@ -108,11 +135,11 @@ Master2 --> Worker4
 
 Cluster characteristics:
 
--   k3s Kubernetes distribution
--   containerd runtime
--   Ubuntu 24.04 nodes
--   2 control‑plane nodes
--   4 workers distributed across AZs
+-   Kubernetes distribution: **k3s**
+-   Container runtime: **containerd**
+-   Operating system: **Ubuntu 24.04**
+-   **2 control-plane nodes**
+-   **4 worker nodes** across two availability zones
 
 Workers communicate with the API server via **HAProxy running on the
 bastion host**.
@@ -121,18 +148,18 @@ bastion host**.
 
 # Technology Stack
 
-  Category                 Technology
-  ------------------------ ----------------
-  Infrastructure as Code   Terraform
-  Cloud                    AWS
-  Kubernetes               k3s
-  Container Runtime        containerd
-  CI/CD                    GitHub Actions
-  Security                 AWS OIDC
-  Cost estimation          Infracost
-  Static analysis          TFLint
-  Load balancing           HAProxy
-  OS                       Ubuntu 24.04
+  Category                  Technology
+  ------------------------- ----------------
+  Infrastructure as Code    Terraform
+  Cloud Provider            AWS
+  Kubernetes Distribution   k3s
+  Container Runtime         containerd
+  CI/CD                     GitHub Actions
+  Security                  AWS OIDC
+  Cost estimation           Infracost
+  Static analysis           TFLint
+  Load balancing            HAProxy
+  Operating System          Ubuntu 24.04
 
 ------------------------------------------------------------------------
 
@@ -159,7 +186,7 @@ Modules:
      ├ k3s-workers
      └ platform
 
-Each module has a single responsibility.
+Each module is responsible for a specific infrastructure component.
 
 ------------------------------------------------------------------------
 
@@ -195,13 +222,22 @@ Pipeline features:
 
 -   Terraform formatting validation
 -   Terraform configuration validation
--   TFLint static analysis
+-   Static analysis with **TFLint**
 -   Terraform plan on Pull Requests
--   Infracost cost estimation
--   Manual apply via workflow dispatch
+-   Cost estimation with **Infracost**
+-   Manual apply using workflow dispatch
 -   Environment protection rules
 -   Drift detection workflow
 -   Controlled destroy workflow
+
+------------------------------------------------------------------------
+
+# Deployment Strategy
+
+  Environment   Apply Strategy
+  ------------- ------------------------------------------------------------
+  dev           Automatic apply via GitHub Actions
+  prod          Manual approval required via GitHub Environment protection
 
 ------------------------------------------------------------------------
 
@@ -220,37 +256,33 @@ Infracost --> PRComment
 ManualRun --> TerraformApply
 ```
 
-Deployment strategy:
-
-  Environment   Apply
-  ------------- -----------------
-  dev           automatic
-  prod          manual approval
-
 ------------------------------------------------------------------------
 
-# Terraform Bootstrap
+# FinOps: Cost Visibility with Infracost
 
-The `bootstrap` configuration provisions Terraform backend resources:
+The CI pipeline integrates **Infracost** to estimate infrastructure
+costs directly in Pull Requests.
 
--   S3 bucket for Terraform state
--   State versioning
--   Encryption
--   IAM role for Terraform execution
--   GitHub OIDC provider
+Example output from a Pull Request summary:
 
-This allows CI/CD pipelines to authenticate **without storing AWS
-credentials**.
+![Infracost Example](infracost.png)
+
+Pull Requests display:
+
+-   Estimated monthly infrastructure cost
+-   Cost differences introduced by the change
+
+This helps maintain **cost-aware infrastructure decisions**.
 
 ------------------------------------------------------------------------
 
 # Security Design
 
-Security controls implemented:
+Security measures implemented:
 
 -   OIDC authentication for GitHub Actions
--   No long‑lived AWS credentials
--   Kubernetes nodes in private subnets
+-   No long-lived AWS credentials stored in GitHub
+-   Kubernetes nodes deployed in private subnets
 -   Bastion host as the only public entry point
 -   Security group isolation
 -   Encrypted Terraform state
@@ -263,91 +295,87 @@ Security controls implemented:
 This project intentionally uses a **NAT instance** instead of an AWS
 **NAT Gateway**.
 
-### NAT Gateway (production best practice)
+## NAT Gateway (production best practice)
 
 Advantages:
 
--   fully managed by AWS
--   high availability
--   automatic scaling
--   minimal maintenance
+-   Fully managed by AWS
+-   High availability
+-   Automatic scaling
 
 Disadvantages:
 
--   relatively expensive
--   hourly cost + traffic cost
+-   Higher cost
+-   Charged hourly plus traffic costs
 
-Typical monthly cost per AZ:
+Typical cost per AZ:
 
-    ~ $32 / month + data transfer
+    ~$32/month + data transfer
 
-For multi‑AZ environments the cost increases further.
-
-------------------------------------------------------------------------
-
-### NAT Instance (used in this project)
+## NAT Instance (used in this project)
 
 Advantages:
 
--   significantly cheaper
--   simple architecture
--   good for development environments
--   easier to understand networking concepts
+-   Much cheaper
+-   Simple architecture
+-   Good for development environments
+-   Educational value for understanding networking
 
-Trade‑offs:
+Trade-offs:
 
--   not managed by AWS
--   requires manual configuration
--   single point of failure
+-   Not managed by AWS
+-   Single point of failure
 
-------------------------------------------------------------------------
-
-### Why NAT Instance was chosen
+## Why NAT Instance Was Chosen
 
 This project prioritizes:
 
--   **cost efficiency**
--   **educational value**
--   **architecture transparency**
+-   **Cost efficiency**
+-   **Educational value**
+-   **Architecture transparency**
 
-The NAT instance runs on the **bastion host**, reducing infrastructure
-cost while still demonstrating:
+The NAT instance runs on the bastion host, reducing infrastructure cost
+while still demonstrating:
 
--   private subnets
+-   private subnet routing
 -   outbound internet access
--   routing configuration
+-   NAT configuration
 
-In production environments, the NAT instance would typically be replaced
-with **managed NAT Gateways**.
+In production environments this would typically be replaced with
+**managed NAT Gateways**.
+
+------------------------------------------------------------------------
+
+# Trade-offs and Design Choices
+
+Several architectural decisions were made to balance cost, complexity
+and educational value.
+
+Key choices include:
+
+-   Using **k3s instead of EKS** to reduce infrastructure cost
+-   Using a **NAT instance instead of a NAT Gateway**
+-   Running **HAProxy on the bastion host** instead of a managed load
+    balancer
+
+These choices keep the architecture simple and inexpensive while still
+demonstrating real-world infrastructure patterns.
 
 ------------------------------------------------------------------------
 
 # Accessing the Kubernetes Cluster
 
-Retrieve kubeconfig from the bastion host:
+Retrieve the kubeconfig from the first master:
 
     ssh -J ubuntu@<bastion-ip> ubuntu@<master-ip> "sudo cat /etc/rancher/k3s/k3s.yaml"
 
-Then establish the API tunnel:
+Then create the API tunnel:
 
     ssh -N -L 6443:127.0.0.1:6443 -J ubuntu@<bastion-ip> ubuntu@<master-ip>
 
 Use kubectl locally:
 
     kubectl get nodes
-
-------------------------------------------------------------------------
-
-# FinOps: Cost Awareness
-
-The CI pipeline integrates **Infracost**.
-
-Pull Requests display:
-
--   estimated monthly cost
--   cost differences introduced by changes
-
-This supports **cost‑aware infrastructure decisions**.
 
 ------------------------------------------------------------------------
 
@@ -359,45 +387,29 @@ A scheduled GitHub workflow runs:
 
 to detect configuration drift.
 
-If drift occurs, the workflow reports it automatically.
+If drift is detected the workflow reports it automatically.
 
 ------------------------------------------------------------------------
 
 # Destroy Workflow
 
-A dedicated workflow allows safe destruction of the dev environment.
+A dedicated workflow allows safe destruction of the **dev environment**.
 
 The workflow requires explicit confirmation:
 
     DESTROY
 
+This prevents accidental infrastructure deletion.
+
 ------------------------------------------------------------------------
 
 # Future Improvements
 
-Possible extensions:
+Possible extensions for the platform:
 
 -   Prometheus monitoring
 -   Grafana dashboards
 -   GitOps with ArgoCD
--   Vault for secrets management
--   Example microservice deployment
+-   Secrets management with Vault
+-   Example application deployment
 -   Cluster autoscaling
-
-------------------------------------------------------------------------
-
-# Purpose of the Project
-
-This repository demonstrates how to build a **modern Kubernetes platform
-using DevOps practices**.
-
-It highlights:
-
--   Infrastructure automation
--   Secure cloud authentication
--   CI/CD pipelines for infrastructure
--   Cost‑aware infrastructure design
--   Kubernetes platform architecture
-
-The project is intended as a **DevOps / Platform Engineering portfolio
-example**.
