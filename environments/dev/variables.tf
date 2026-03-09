@@ -7,7 +7,7 @@ variable "region" {
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "k3s-platform"
+  default     = "k3s-platform-demo"
 }
 
 variable "environment" {
