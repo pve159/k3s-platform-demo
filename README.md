@@ -332,7 +332,7 @@ to detect configuration drift.
 
 # Destroy Workflow
 
-A dedicated workflow allows safe destruction of the **dev environment**.
+A dedicated workflow allows safe destruction of the environment.
 
 The workflow requires explicit confirmation:
 
