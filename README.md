@@ -12,21 +12,21 @@ This project demonstrates how to build and automate a small Kubernetes platform 
 
 Key concepts illustrated in this repository include:
 
-- **Infrastructure as Code** using Terraform modules
-- **Modular infrastructure design**
-- **Multi-environment infrastructure management**
-- **Infrastructure CI/CD pipelines with GitHub Actions**
-- **Secure cloud authentication using GitHub OIDC**
-- **Cost-aware infrastructure management (FinOps)** with Infracost
-- **Infrastructure drift detection**
-- **Private Kubernetes cluster networking**
-- **Kubernetes control-plane high availability**
+- Infrastructure as Code using Terraform modules
+- Modular infrastructure design
+- Multi-environment infrastructure management
+- Infrastructure CI/CD pipelines with GitHub Actions
+- Secure cloud authentication using GitHub OIDC
+- Cost-aware infrastructure management (FinOps) with Infracost
+- Infrastructure drift detection
+- Private Kubernetes cluster networking
+- Kubernetes control-plane high availability
 
 ---
 
 # Architecture Overview
 
-The platform deploys a **high-availability k3s Kubernetes cluster on AWS**.
+The platform deploys a high-availability **k3s Kubernetes cluster on AWS**.
 
 Infrastructure components:
 
@@ -94,9 +94,9 @@ Master2 --- Worker4
 
 ### Traffic flow
 
-- **kubectl access:** Admin workstation → Bastion → HAProxy → Masters  
-- **Worker API calls:** Workers → HAProxy → Masters  
-- **Cluster communication:** Masters ↔ Workers
+- kubectl access: Admin workstation → Bastion → HAProxy → Masters
+- Worker API calls: Workers → HAProxy → Masters
+- Cluster communication: Masters ↔ Workers
 
 ---
 
@@ -162,9 +162,13 @@ Platform --> Masters
 Platform --> Workers
 ```
 
-Modules:
+Repository:
 
 ```
+bootstrap/
+environments/
+ ├ dev
+ ├ prod
 modules/
  ├ network
  ├ bastion
@@ -177,29 +181,53 @@ Each module manages a specific infrastructure component.
 
 ---
 
-# Repository Structure
+# Bootstrap Infrastructure
 
+Before deploying the platform, a **bootstrap Terraform stack** prepares the AWS environment.
+
+This bootstrap layer creates:
+
+- The **S3 bucket used for the Terraform remote state**
+- Versioning and encryption for the state bucket
+- The **GitHub OIDC provider**
+- The **Terraform execution IAM role**
+- IAM policies required for infrastructure provisioning
+
+This ensures Terraform runs with **secure, temporary credentials** and a properly configured backend.
+
+---
+
+# AWS Authentication (OIDC + AssumeRole)
+
+Terraform is executed from **GitHub Actions using AWS OIDC authentication**.
+
+Instead of storing AWS credentials in GitHub, the workflow:
+
+1. Authenticates with AWS using the **GitHub OIDC provider**
+2. Calls **AWS STS AssumeRoleWithWebIdentity**
+3. Obtains temporary credentials for the **Terraform execution role**
+
+```mermaid
+flowchart LR
+
+GitHubActions["GitHub Actions Workflow"]
+OIDC["GitHub OIDC Provider"]
+STS["AWS STS"]
+TerraformRole["Terraform Execution Role"]
+AWS["AWS Infrastructure"]
+
+GitHubActions --> OIDC
+OIDC --> STS
+STS --> TerraformRole
+TerraformRole --> AWS
 ```
-.
-├ bootstrap
-│   ├ Terraform backend
-│   └ IAM configuration
-│
-├ environments
-│   ├ dev
-│   └ prod
-│
-├ modules
-│   ├ network
-│   ├ bastion
-│   ├ k3s-masters
-│   ├ k3s-workers
-│   └ platform
-│
-└ .github
-    ├ actions
-    └ workflows
-```
+
+Advantages of this approach:
+
+- No long-lived AWS credentials
+- Short-lived security tokens
+- Fine-grained IAM permissions
+- Secure CI/CD authentication
 
 ---
 
@@ -230,23 +258,6 @@ Pipeline features:
 
 ---
 
-# Pipeline Flow
-
-```mermaid
-flowchart TD
-
-PR --> TerraformFmt
-TerraformFmt --> Validate
-Validate --> TFLint
-TFLint --> Plan
-Plan --> Infracost
-Infracost --> PRComment
-
-ManualRun --> TerraformApply
-```
-
----
-
 # FinOps: Cost Visibility with Infracost
 
 The CI pipeline integrates **Infracost** to estimate infrastructure costs directly in Pull Requests.
@@ -271,6 +282,7 @@ This helps maintain **cost-aware infrastructure decisions**.
 Security measures implemented:
 
 - OIDC authentication for GitHub Actions
+- Terraform execution using AssumeRole
 - No long-lived AWS credentials stored in GitHub
 - Kubernetes nodes deployed in private subnets
 - Bastion host as the only public entry point
@@ -287,10 +299,8 @@ Several architectural decisions were made to balance cost, complexity, and educa
 Key choices include:
 
 - Using **k3s instead of EKS** to reduce infrastructure cost
-- Using a **NAT instance (instead of a managed NAT Gateway)** to reduce cost
+- Using a **NAT instance instead of a managed NAT Gateway**
 - Running **HAProxy on the bastion host** instead of a managed load balancer
-
-These decisions keep the architecture simple and inexpensive while still demonstrating real-world infrastructure patterns.
 
 ---
 
@@ -318,8 +328,6 @@ terraform plan
 
 to detect configuration drift.
 
-If drift is detected the workflow reports it automatically.
-
 ---
 
 # Destroy Workflow
@@ -329,8 +337,6 @@ A dedicated workflow allows safe destruction of the **dev environment**.
 The workflow requires explicit confirmation:
 
 DESTROY
-
-This prevents accidental infrastructure deletion.
 
 ---
 
