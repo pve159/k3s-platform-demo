@@ -322,11 +322,7 @@ kubectl get nodes
 
 # Drift Detection
 
-A scheduled GitHub workflow runs:
-
-terraform plan
-
-to detect configuration drift.
+A scheduled GitHub workflow runs `terraform plan` to detect configuration drift.
 
 ---
 
@@ -334,9 +330,7 @@ to detect configuration drift.
 
 A dedicated workflow allows safe destruction of the environment.
 
-The workflow requires explicit confirmation:
-
-DESTROY
+The workflow requires explicit confirmation: DESTROY
 
 ---
 
