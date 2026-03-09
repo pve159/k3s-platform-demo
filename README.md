@@ -5,47 +5,21 @@
 ![AWS](https://img.shields.io/badge/Cloud-AWS-orange)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black)
 
-A **DevOps / Platform Engineering portfolio project** demonstrating how
-to deploy and operate a **production-style Kubernetes platform on AWS**
-using **Terraform**, **GitHub Actions**, and **k3s**.
+## DevOps Concepts Demonstrated
 
-------------------------------------------------------------------------
+This project demonstrates how to build and automate a small Kubernetes platform using modern DevOps and Platform Engineering practices.
 
-# Purpose of This Project
+Key concepts illustrated in this repository include:
 
-This repository demonstrates how to design and automate a **small
-Kubernetes platform using modern DevOps practices**.
-
-The project showcases the following concepts:
-
--   Infrastructure as Code using **Terraform**
--   **Modular infrastructure architecture**
--   **CI/CD pipelines for infrastructure**
--   Secure AWS authentication using **GitHub OIDC**
--   **Cost-aware infrastructure (FinOps)** using Infracost
--   **Static analysis** with TFLint
--   **Infrastructure drift detection**
--   Automated Kubernetes cluster bootstrap
-
-The goal is to illustrate how a **single engineer can build and operate
-a production-like Kubernetes platform** using DevOps principles.
-
-------------------------------------------------------------------------
-
-# Platform Engineering Concepts Demonstrated
-
-This project demonstrates several key platform engineering and DevOps
-concepts:
-
--   Infrastructure as Code using Terraform modules
--   Immutable infrastructure provisioning
--   Multi-environment infrastructure management
--   Infrastructure CI/CD pipelines
--   Secure cloud authentication using GitHub OIDC
--   Cost-aware infrastructure management (FinOps)
--   Infrastructure drift detection
--   Private Kubernetes cluster networking
--   Kubernetes control-plane high availability
+- **Infrastructure as Code** using Terraform modules
+- **Modular infrastructure design**
+- **Multi-environment infrastructure management**
+- **Infrastructure CI/CD pipelines with GitHub Actions**
+- **Secure cloud authentication using GitHub OIDC**
+- **Cost-aware infrastructure management (FinOps)** with Infracost
+- **Infrastructure drift detection**
+- **Private Kubernetes cluster networking**
+- **Kubernetes control-plane high availability**
 
 ------------------------------------------------------------------------
 
