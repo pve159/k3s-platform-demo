@@ -280,59 +280,6 @@ Security measures implemented:
 
 ---
 
-# Design Decision: NAT Instance vs NAT Gateway
-
-This project intentionally uses a **NAT instance** instead of an AWS **NAT Gateway**.
-
-## NAT Gateway (production best practice)
-
-Advantages:
-
-- Fully managed by AWS
-- High availability
-- Automatic scaling
-
-Disadvantages:
-
-- Higher cost
-- Charged hourly plus traffic costs
-
-Typical cost per AZ:
-
-~$32/month + data transfer
-
-## NAT Instance (used in this project)
-
-Advantages:
-
-- Much cheaper
-- Simple architecture
-- Good for development environments
-- Educational value for understanding networking
-
-Trade-offs:
-
-- Not managed by AWS
-- Single point of failure
-
-## Why NAT Instance Was Chosen
-
-This project prioritizes:
-
-- **Cost efficiency**
-- **Educational value**
-- **Architecture transparency**
-
-The NAT instance runs on the bastion host, reducing infrastructure cost while still demonstrating:
-
-- private subnet routing
-- outbound internet access
-- NAT configuration
-
-In production environments this would typically be replaced with **managed NAT Gateways**.
-
----
-
 # Trade-offs and Design Choices
 
 Several architectural decisions were made to balance cost, complexity, and educational value.
