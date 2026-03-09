@@ -45,45 +45,58 @@ Infrastructure components:
 # AWS Network Architecture
 
 ``` mermaid
-flowchart TB
+flowchart TD
 
-Internet --> Bastion
+Admin["Admin workstation<br/>kubectl"]
 
-subgraph AWS VPC
-    Bastion["Bastion / NAT / HAProxy"]
+Admin --> Bastion
 
-    subgraph Public Subnet
-        Bastion
+subgraph VPC["AWS VPC"]
+
+    subgraph PublicSubnet["Public Subnet"]
+        Bastion["Bastion Host<br/>SSH Gateway + NAT + HAProxy"]
     end
 
-    subgraph Private Subnet AZ1
-        Master1["k3s master 1"]
-        Worker1
-        Worker2
+    subgraph AZ1["Private Subnet AZ1"]
+        Master1["k3s Master 1<br/>Control Plane"]
+        Worker1["Worker 1"]
+        Worker2["Worker 2"]
     end
 
-    subgraph Private Subnet AZ2
-        Master2["k3s master 2"]
-        Worker3
-        Worker4
+    subgraph AZ2["Private Subnet AZ2"]
+        Master2["k3s Master 2<br/>Control Plane"]
+        Worker3["Worker 3"]
+        Worker4["Worker 4"]
     end
 
-    Bastion --> Master1
-    Bastion --> Master2
-
-    Worker1 --> Bastion
-    Worker2 --> Bastion
-    Worker3 --> Bastion
-    Worker4 --> Bastion
 end
+
+Bastion --> Master1
+Bastion --> Master2
+
+Worker1 --> Bastion
+Worker2 --> Bastion
+Worker3 --> Bastion
+Worker4 --> Bastion
+
+Master1 --- Worker1
+Master1 --- Worker2
+Master2 --- Worker3
+Master2 --- Worker4
 ```
 
-Key characteristics:
+### Architecture highlights
 
--   Only the **bastion host has a public IP**
--   Kubernetes nodes run in **private subnets**
--   Bastion provides **NAT for outbound internet traffic**
--   HAProxy **load balances the Kubernetes API across masters**
+- Only the **bastion host has a public IP**
+- Kubernetes nodes run in **private subnets**
+- The bastion acts as **SSH gateway, NAT instance, and Kubernetes API load balancer (HAProxy)**
+- The **Kubernetes API is load balanced across the control-plane nodes**
+
+### Traffic flow
+
+- **kubectl access:** Admin workstation → Bastion → HAProxy → Masters  
+- **Worker API calls:** Workers → HAProxy → Masters  
+- **Cluster communication:** Masters ↔ Workers
 
 ------------------------------------------------------------------------
 
@@ -120,20 +133,20 @@ bastion host**.
 
 ------------------------------------------------------------------------
 
-# Technology Stack
+## Technology Stack
 
-  Category                  Technology
-  ------------------------- ----------------
-  Infrastructure as Code    Terraform
-  Cloud Provider            AWS
-  Kubernetes Distribution   k3s
-  Container Runtime         containerd
-  CI/CD                     GitHub Actions
-  Security                  AWS OIDC
-  Cost estimation           Infracost
-  Static analysis           TFLint
-  Load balancing            HAProxy
-  Operating System          Ubuntu 24.04
+| Category | Technology |
+|---|---|
+| Infrastructure as Code | Terraform |
+| Cloud Provider | AWS |
+| Kubernetes Distribution | k3s |
+| Container Runtime | containerd |
+| CI/CD | GitHub Actions |
+| Security | AWS OIDC |
+| Cost Estimation | Infracost |
+| Static Analysis | TFLint |
+| Load Balancing | HAProxy |
+| Operating System | Ubuntu 24.04 |
 
 ------------------------------------------------------------------------
 
@@ -206,12 +219,12 @@ Pipeline features:
 
 ------------------------------------------------------------------------
 
-# Deployment Strategy
+## Deployment Strategy
 
-  Environment   Apply Strategy
-  ------------- ------------------------------------------------------------
-  dev           Automatic apply via GitHub Actions
-  prod          Manual approval required via GitHub Environment protection
+| Environment | Apply Strategy |
+|---|---|
+| dev | Automatic apply via GitHub Actions |
+| prod | Manual approval required via GitHub Environment protection |
 
 ------------------------------------------------------------------------
 
